@@ -54,6 +54,11 @@ typedef struct sharedmem {
   int             shmemfuzz_mode;
   struct cmp_map *cmp_map;
 
+  // 用于 定位共享内存
+  s32  ctxhtfuzz_count_shm_id;
+  // AFL++的共享内存
+  u32 *ctxhtfuzz_count_map;
+
 } sharedmem_t;
 
 u8  *afl_shm_init(sharedmem_t *, size_t, unsigned char non_instrumented_mode);

@@ -611,6 +611,8 @@ u8 calibrate_case(afl_state_t *afl, struct queue_entry *q, u8 *use_mem,
   q->handicap = handicap;
   q->cal_failed = 0;
 
+  q->count_score = afl->shm.ctxhtfuzz_count_map[0];
+
   afl->total_bitmap_size += q->bitmap_size;
   ++afl->total_bitmap_entries;
 
@@ -1038,6 +1040,8 @@ u8 trim_case(afl_state_t *afl, struct queue_entry *q, u8 *in_buf) {
     close(fd);
 
     queue_testcase_retake_mem(afl, q, in_buf, q->len, orig_len);
+
+    q->count_score = afl->shm.ctxhtfuzz_count_map[0];
 
     memcpy(afl->fsrv.trace_bits, afl->clean_trace, afl->fsrv.map_size);
     update_bitmap_score(afl, q);

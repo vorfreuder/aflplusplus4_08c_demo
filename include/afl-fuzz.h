@@ -151,7 +151,7 @@ struct tainted {
 };
 
 struct queue_entry {
-
+  u32 count_score;                      /*引导种子策略的值，这里取自共享内存的第一个元素值*/
   u8 *fname;                            /* File name for the test case      */
   u32 len;                              /* Input length                     */
   u32 id;                               /* entry number in queue_buf        */

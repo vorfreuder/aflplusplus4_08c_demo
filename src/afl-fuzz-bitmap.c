@@ -517,10 +517,10 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
 #ifndef SIMPLE_FILES
 
     queue_fn =
-        alloc_printf("%s/queue/id:%06u,%s", afl->out_dir, afl->queued_items,
+        alloc_printf("%s/queue/id:%06u,%s,%d", afl->out_dir, afl->queued_items,
                      describe_op(afl, new_bits + is_timeout,
-                                 NAME_MAX - strlen("id:000000,")));
-
+                                 NAME_MAX - strlen("id:000000,")),
+                     afl->shm.ctxhtfuzz_count_map[0]);
 #else
 
     queue_fn =
@@ -781,9 +781,10 @@ save_if_interesting(afl_state_t *afl, void *mem, u32 len, u8 fault) {
 
 #ifndef SIMPLE_FILES
 
-      snprintf(fn, PATH_MAX, "%s/crashes/id:%06llu,sig:%02u,%s", afl->out_dir,
-               afl->saved_crashes, afl->fsrv.last_kill_signal,
-               describe_op(afl, 0, NAME_MAX - strlen("id:000000,sig:00,")));
+      snprintf(fn, PATH_MAX, "%s/crashes/id:%06llu,sig:%02u,%s,%d",
+               afl->out_dir, afl->saved_crashes, afl->fsrv.last_kill_signal,
+               describe_op(afl, 0, NAME_MAX - strlen("id:000000,sig:00,")),
+               afl->shm.ctxhtfuzz_count_map[0]);
 
 #else
 

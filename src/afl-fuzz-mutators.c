@@ -623,6 +623,8 @@ u8 trim_case_custom(afl_state_t *afl, struct queue_entry *q, u8 *in_buf,
        also don't update q->len. */
     q->len = out_len;
 
+    q->count_score = afl->shm.ctxhtfuzz_count_map[0];
+
     memcpy(afl->fsrv.trace_bits, afl->clean_trace_custom, afl->fsrv.map_size);
     update_bitmap_score(afl, q);
 

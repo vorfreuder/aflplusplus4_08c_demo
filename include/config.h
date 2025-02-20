@@ -522,6 +522,11 @@
 /* Maximum mutations on a string */
 
 #define AFL_TXT_STRING_MAX_MUTATIONS 6
+// 用于 定位共享内存
+#define CTXHTFUZZ_COUNT_SHM_ENV_VAR "__AFL_CTXHTFUZZ_COUNT_SHM_ID"
+// 共享数组的大小
+#define MAP_COUNT_SIZE_POW2 2
+#define MAP_COUNT_SIZE (1 << MAP_COUNT_SIZE_POW2)
 
 #endif                                                  /* ! _HAVE_CONFIG_H */
 

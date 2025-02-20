@@ -596,6 +596,12 @@ void add_to_queue(afl_state_t *afl, u8 *fname, u32 len, u8 passed_det) {
   q->testcase_buf = NULL;
   q->mother = afl->queue_cur;
 
+  // 防止未初始化
+  if (afl->shm.ctxhtfuzz_count_map)
+    q->count_score = afl->shm.ctxhtfuzz_count_map[0];
+  else
+    q->count_score = 0;
+
 #ifdef INTROSPECTION
   q->bitsmap_size = afl->bitsmap_size;
 #endif
@@ -725,6 +731,8 @@ void update_bitmap_score(afl_state_t *afl, struct queue_entry *q) {
     if (afl->fsrv.trace_bits[i]) {
 
       if (afl->top_rated[i]) {
+        // 优先选取count_score大的种子
+        if (q->count_score > afl->top_rated[i]->count_score) goto winner;
 
         /* Faster-executing or smaller test cases are favored. */
         u64 top_rated_fav_factor;
@@ -770,6 +778,8 @@ void update_bitmap_score(afl_state_t *afl, struct queue_entry *q) {
           }
 
         }
+
+      winner:
 
         /* Looks like we're going to win. Decrease ref count for the
            previous winner, discard its afl->fsrv.trace_bits[] if necessary. */

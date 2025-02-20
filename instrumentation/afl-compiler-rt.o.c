@@ -194,6 +194,10 @@ u32 __afl_already_initialized_second;
 u32 __afl_already_initialized_early;
 u32 __afl_already_initialized_init;
 
+// 被测程序的共享内存
+static u32 __afl_count_ptr_initial[MAP_COUNT_SIZE];
+u32       *__afl_count_ptr = __afl_count_ptr_initial;
+
 /* Dummy pipe for area_is_valid() */
 
 static int __afl_dummy_fd[2] = {2, 2};
@@ -572,6 +576,20 @@ static void __afl_map_shm(void) {
 
     __afl_area_ptr[0] = 1;
 
+    // 定位共享内存
+    char *count_id_str = getenv(CTXHTFUZZ_COUNT_SHM_ENV_VAR);
+    if (!count_id_str) {
+      fprintf(stderr, "CTXHTFuzz SHM ERROR\n");
+      send_forkserver_error(FS_ERROR_MAP_SIZE);
+      _exit(1);
+    }
+    u32 count_id = atoi(count_id_str);
+    __afl_count_ptr = (u32 *)shmat(count_id, NULL, 0);
+    if (!__afl_count_ptr || __afl_count_ptr == (void *)-1) {
+      send_forkserver_error(FS_ERROR_SHMAT);
+      _exit(1);
+    }
+
   } else if ((!__afl_area_ptr || __afl_area_ptr == __afl_area_initial) &&
 
              __afl_map_addr) {
@@ -851,6 +869,9 @@ static void __afl_start_snapshots(void) {
   /* Phone home and tell the parent that we're OK. If parent isn't there,
      assume we're not running in forkserver mode and just execute program. */
 
+    //  清空共享内存
+    memset(__afl_count_ptr, 0, sizeof(u32) * MAP_COUNT_SIZE);
+
   status |= (FS_OPT_ENABLED | FS_OPT_SNAPSHOT | FS_OPT_NEWCMPLOG);
   if (__afl_sharedmem_fuzzing) { status |= FS_OPT_SHDMEM_FUZZ; }
   if (__afl_map_size <= FS_OPT_MAX_MAPSIZE)
@@ -1021,6 +1042,8 @@ static void __afl_start_snapshots(void) {
         __afl_area_ptr[0] = 1;
         memset(__afl_prev_loc, 0, NGRAM_SIZE_MAX * sizeof(PREV_LOC_T));
 
+        memset(__afl_count_ptr, 0, sizeof(u32) * MAP_COUNT_SIZE);
+
         return;
 
       }
@@ -1127,6 +1150,8 @@ static void __afl_start_forkserver(void) {
 
   /* Phone home and tell the parent that we're OK. If parent isn't there,
      assume we're not running in forkserver mode and just execute program. */
+
+    memset(__afl_count_ptr, 0, sizeof(u32) * MAP_COUNT_SIZE);
 
   if (write(FORKSRV_FD + 1, tmp, 4) != 4) { return; }
 
@@ -1278,6 +1303,9 @@ static void __afl_start_forkserver(void) {
 
         close(FORKSRV_FD);
         close(FORKSRV_FD + 1);
+
+        memset(__afl_count_ptr, 0, sizeof(u32) * MAP_COUNT_SIZE);
+
         return;
 
       }
@@ -1350,6 +1378,8 @@ int __afl_persistent_loop(unsigned int max_cnt) {
     first_pass = 0;
     __afl_selective_coverage_temp = 1;
 
+    memset(__afl_count_ptr, 0, sizeof(u32) * MAP_COUNT_SIZE);
+
     return 1;
 
   } else if (--cycle_cnt) {
@@ -1359,6 +1389,8 @@ int __afl_persistent_loop(unsigned int max_cnt) {
     __afl_area_ptr[0] = 1;
     memset(__afl_prev_loc, 0, NGRAM_SIZE_MAX * sizeof(PREV_LOC_T));
     __afl_selective_coverage_temp = 1;
+
+    memset(__afl_count_ptr, 0, sizeof(u32) * MAP_COUNT_SIZE);
 
     return 1;
 

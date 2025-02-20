@@ -408,6 +408,10 @@ bool AFLCoverage::runOnModule(Module &M) {
   GlobalVariable *AFLMapPtr =
       new GlobalVariable(M, PointerType::get(Int8Ty, 0), false,
                          GlobalValue::ExternalLinkage, 0, "__afl_area_ptr");
+  //  共享内存
+  GlobalVariable *AFLCountPtr =
+      new GlobalVariable(M, PointerType::get(Int32Ty, 0), false,
+                         GlobalValue::ExternalLinkage, 0, "__afl_count_ptr");
   GlobalVariable *AFLPrevLoc;
   GlobalVariable *AFLPrevCaller;
   GlobalVariable *AFLContext = NULL;
@@ -512,6 +516,7 @@ bool AFLCoverage::runOnModule(Module &M) {
   /* Instrument all the things! */
 
   int inst_blocks = 0;
+  int inst_branches = 0;
   scanForDangerousFunctions(&M);
 
   for (auto &F : M) {
@@ -886,6 +891,31 @@ bool AFLCoverage::runOnModule(Module &M) {
 
       inst_blocks++;
 
+      // 插桩示例：程序每次经过call指令, 计数器加一(__afl_count_ptr[0]++)
+      for (Instruction &I : BB) {
+        {
+          if (isa<CallInst>(&I)) {
+            IRBuilder<> Builder(&I);
+            LoadInst   *CountPtr =
+                Builder.CreateLoad(PointerType::get(Int32Ty, 0), AFLCountPtr);
+            CountPtr->setMetadata(M.getMDKindID("nosanitize"),
+                                  MDNode::get(C, None));
+            // 定位到__afl_count_ptr[0]
+            Value *CountPtrIdx = Builder.CreateGEP(
+                Int32Ty, CountPtr, ConstantInt::get(Int32Ty, 0));
+            LoadInst *Counter =
+                Builder.CreateLoad(Builder.getInt32Ty(), CountPtrIdx);
+            Counter->setMetadata(M.getMDKindID("nosanitize"),
+                                 MDNode::get(C, None));
+            Value *Incr =
+                Builder.CreateAdd(Counter, ConstantInt::get(Int32Ty, 1));
+            Builder.CreateStore(Incr, CountPtrIdx)
+                ->setMetadata(M.getMDKindID("nosanitize"),
+                              MDNode::get(C, None));
+            inst_branches++;
+          }
+        }
+      }
     }
 
 #if 0
@@ -1075,6 +1105,7 @@ bool AFLCoverage::runOnModule(Module &M) {
                getenv("AFL_USE_UBSAN") ? ", UBSAN" : "");
       OKF("Instrumented %d locations (%s mode, ratio %u%%).", inst_blocks,
           modeline, inst_ratio);
+      OKF("Instrumented %d branches.", inst_branches);
 
     }
 

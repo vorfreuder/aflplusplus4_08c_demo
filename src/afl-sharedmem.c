@@ -358,6 +358,26 @@ u8 *afl_shm_init(sharedmem_t *shm, size_t map_size,
 
 #endif
 
+  // 申请共享内存
+  if (!non_instrumented_mode && !shm->ctxhtfuzz_count_map)  // init once
+  {
+    u8 *ctxhtfuzz_count_shm_str;
+    shm->ctxhtfuzz_count_shm_id =
+        shmget(IPC_PRIVATE, MAP_COUNT_SIZE * sizeof(u32),
+               IPC_CREAT | IPC_EXCL | DEFAULT_PERMISSION);
+    if (shm->ctxhtfuzz_count_shm_id < 0) {
+      PFATAL("CTXHTFuzz: shmget() failed");
+    }
+    ctxhtfuzz_count_shm_str = alloc_printf("%d", shm->ctxhtfuzz_count_shm_id);
+    setenv(CTXHTFUZZ_COUNT_SHM_ENV_VAR, ctxhtfuzz_count_shm_str, 1);
+    ck_free(ctxhtfuzz_count_shm_str);
+    shm->ctxhtfuzz_count_map = shmat(shm->ctxhtfuzz_count_shm_id, NULL, 0);
+    if (shm->ctxhtfuzz_count_map == (void *)-1 || !shm->ctxhtfuzz_count_map) {
+      shmctl(shm->ctxhtfuzz_count_shm_id, IPC_RMID, NULL);  // do not leak shmem
+      PFATAL("CTXHTFuzz: shmget() failed");
+    }
+  }
+
   shm->map_size = map_size;
   list_append(&shm_list, shm);
 
